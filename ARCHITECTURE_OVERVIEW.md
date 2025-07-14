@@ -230,9 +230,9 @@ The semantic search capability is powered by Qdrant vector database with AI-gene
 ```mermaid
 graph TB
     subgraph "Query Processing"
-        USER_Q[User Query<br/>"login failures staging"]
-        EMBED_Q[Query Embedding<br/>Vector Generation]
-        FILTER[Filter Application<br/>Environment, Date, Status]
+        USER_Q[User Query "login failures staging"]
+        EMBED_Q[Query Embedding Vector Generation]
+        FILTER[Filter Application Environment, Date, Status]
     end
     
     subgraph "Qdrant Collections"
