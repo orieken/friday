@@ -1,530 +1,883 @@
-# Saturday CLI - Architecture Overview
+# Friday Test Analysis Platform - Architectural Overview
 
-## System Architecture
+## Executive Summary
 
-Saturday CLI is built with a modular, extensible architecture that follows Docker/Kubernetes-style design patterns. The system is composed of several key layers that work together to provide comprehensive test framework generation capabilities.
+The Friday Test Analysis Platform is an intelligent test results analysis system that transforms Cucumber test reports into actionable insights through AI-powered analysis, semantic search, and comprehensive analytics. The platform leverages modern microservices architecture, vector databases, and LLM integration to provide development teams with unprecedented visibility into their testing processes.
 
-## High-Level Architecture
-
-```mermaid
-graph TB
-    CLI[Core CLI Layer<br/>Cobra Framework] --> CMD[Command Layer]
-    CMD --> GEN[Generator System]
-    CMD --> PLUGIN[Plugin System]
-    GEN --> TMPL[Template System]
-    TMPL --> OUT[Output Layer]
-    CONFIG[Configuration<br/>Viper] -.-> GEN
-    CONFIG -.-> PLUGIN
-    UTILS[Utilities] -.-> GEN
-    OUT --> FRAMEWORK[Framework Structure]
-    OUT --> COMPONENTS[Site Components]
-    OUT -.-> ML[ML Framework<br/>Optional]
-    
-    style CLI fill:#3498db
-    style GEN fill:#e74c3c
-    style PLUGIN fill:#2ecc71
-    style TMPL fill:#f39c12
-    style CONFIG fill:#9b59b6
-    style OUT fill:#1abc9c
-    style ML fill:#e67e22
-```
-
-## Core System Components
-
-### 1. Core CLI Layer (Foundation)
-
-**Location**: `cmd/saturday/main.go`
-
-The foundation layer built on the Cobra framework provides:
-
-- **Command Parsing**: Root command with global flags (`--config`, `--verbose`, `--dry-run`)
-- **Plugin Discovery**: Automatic loading of Go and binary plugins on startup
-- **Error Handling**: Comprehensive error reporting with helpful suggestions
-- **Shell Completion**: Support for bash, zsh, and fish shells
-- **Version Management**: Git-based version info with commit and build date
-
-```mermaid
-graph LR
-    MAIN[main.go] --> COBRA[Cobra Root]
-    COBRA --> FLAGS[Global Flags]
-    COBRA --> PLUGINS[Plugin Loading]
-    COBRA --> CMDS[Sub Commands]
-    COBRA --> COMPLETION[Shell Completion]
-```
-
-### 2. Command Layer
-
-**Location**: `internal/commands/`
-
-The command layer implements the main CLI operations:
-
-#### Generate Commands (`generate.go`)
-```bash
-saturday generate framework [NAME] --with-ml --with-examples
-saturday generate site [SITE_NAME] --base-url URL --with-ml
-saturday generate page [PAGE_NAME] --site SITE --path PATH
-saturday generate flow [FLOW_NAME] --site SITE --pages "PAGE1,PAGE2"
-saturday generate element [ELEMENT_NAME] --base-type TYPE
-saturday generate tool [TOOL_NAME] --type TYPE
-saturday generate command [COMMAND_NAME] --cobra
-```
-
-#### Init Commands (`init.go`)
-```bash
-saturday init project [NAME]     # Complete project initialization
-saturday init config             # Configuration file creation
-```
-
-#### Plugin Commands (`plugin.go`)
-```bash
-saturday plugin list             # List installed plugins
-saturday plugin install URL     # Install new plugins
-saturday plugin info NAME       # Plugin details
-```
-
-### 3. Generator System
-
-**Location**: `internal/generator/`
-
-The generator system is the heart of the CLI, responsible for creating all TypeScript/Playwright components:
+## High-Level System Architecture
 
 ```mermaid
 graph TB
-    BASE[Base Generator<br/>template engine, validation] --> SITE[Site Generator]
-    BASE --> PAGE[Page Generator]
-    BASE --> FLOW[Flow Generator]
-    BASE --> ELEMENT[Element Generator]
-    BASE --> TOOL[Tool Generator]
-    BASE --> COMMAND[Command Generator]
-    BASE --> FRAMEWORK[Framework Generator]
+    subgraph "External Systems"
+        CI[CI/CD Pipelines<br/>Jenkins, GitHub Actions]
+        TF[Test Frameworks<br/>Cucumber, JUnit, TestNG]
+        AI[OpenAI Services<br/>GPT-4, Embeddings]
+        EXT[External Tools<br/>Jira, Slack, Teams]
+    end
     
-    SITE --> SITEOUT[Site Structure<br/>+ Landing Page]
-    PAGE --> PAGEOUT[TypeScript Page Classes]
-    FLOW --> FLOWOUT[User Journey Flows]
-    ELEMENT --> ELEMOUT[Custom UI Elements]
-    TOOL --> TOOLOUT[Tool Wrappers]
-    COMMAND --> CMDOUT[Go Plugin Commands]
-    FRAMEWORK --> FRAMOUT[Complete Project]
+    subgraph "Client Layer"
+        WEB[Web Dashboard<br/>React/Vue Frontend]
+        MOB[Mobile Apps<br/>iOS/Android]
+        CLI[API Clients<br/>CLI Tools, SDKs]
+        IDE[VS Code Extension]
+    end
+    
+    subgraph "API Gateway"
+        LB[Load Balancer]
+        GW[API Gateway]
+        AUTH[Authentication]
+        RATE[Rate Limiting]
+    end
+    
+    subgraph "Friday Core Platform"
+        API[FastAPI Backend]
+        ORCH[Service Orchestrator]
+        PROC[Data Processing Engine]
+        AIENG[AI & Analytics Engine]
+    end
+    
+    subgraph "Data Layer"
+        VDB[(Qdrant Vector DB<br/>Semantic Search)]
+        CACHE[(Redis Cache<br/>Session & Queue)]
+        RDBMS[(PostgreSQL<br/>User & Config)]
+        TSDB[(Time Series DB<br/>Metrics)]
+        OBJ[(Object Storage<br/>Artifacts)]
+    end
+    
+    subgraph "Infrastructure"
+        K8S[Kubernetes]
+        DOCKER[Docker Containers]
+        CLOUD[Cloud Platform]
+        MON[Monitoring & Logging]
+    end
+    
+    %% External connections
+    CI --> API
+    TF --> API
+    AI --> AIENG
+    EXT --> API
+    
+    %% Client connections
+    WEB --> GW
+    MOB --> GW
+    CLI --> GW
+    IDE --> GW
+    
+    %% Gateway to core
+    GW --> API
+    LB --> GW
+    AUTH --> GW
+    RATE --> GW
+    
+    %% Core platform interactions
+    API --> ORCH
+    ORCH --> PROC
+    ORCH --> AIENG
+    
+    %% Data layer connections
+    PROC --> VDB
+    PROC --> CACHE
+    API --> RDBMS
+    AIENG --> TSDB
+    PROC --> OBJ
+    
+    %% Infrastructure
+    K8S --> API
+    DOCKER --> K8S
+    CLOUD --> K8S
+    MON --> API
+    
+    %% Styling
+    classDef external fill:#e1f5fe
+    classDef client fill:#f3e5f5
+    classDef gateway fill:#fff3e0
+    classDef core fill:#e8f5e8
+    classDef data fill:#fce4ec
+    classDef infra fill:#f1f8e9
+    
+    class CI,TF,AI,EXT external
+    class WEB,MOB,CLI,IDE client
+    class LB,GW,AUTH,RATE gateway
+    class API,ORCH,PROC,AIENG core
+    class VDB,CACHE,RDBMS,TSDB,OBJ data
+    class K8S,DOCKER,CLOUD,MON infra
 ```
 
-#### Generator Hierarchy
+## Core Components Deep Dive
 
-**Base Generator** (`base_generator.go`)
-- Template engine with Go templates
-- File and directory creation utilities
-- Validation and error handling
-- Progress reporting and dry-run support
+### 1. Data Processing Pipeline
 
-**Specialized Generators**:
-
-1. **Framework Generator**: Creates complete project structure
-2. **Site Generator**: Generates site-specific directory structure and base classes
-3. **Page Generator**: Creates page object classes with element registration
-4. **Flow Generator**: Generates user journey flow classes
-5. **Element Generator**: Custom UI element classes extending base elements
-6. **Tool Generator**: External tool integration wrappers
-7. **Command Generator**: Go plugin command scaffolding
-
-### 4. Template System
-
-**Location**: `internal/templates/`
-
-The template system provides flexible, customizable code generation:
+The heart of Friday's architecture is its intelligent data processing pipeline that transforms raw test data into searchable, analyzable insights.
 
 ```mermaid
-graph LR
-    TEMPLATES[Template System] --> TS[TypeScript Templates]
-    TEMPLATES --> CONFIG[Config Templates]
-    TEMPLATES --> DOC[Documentation Templates]
-    TEMPLATES --> ML[ML Templates]
+flowchart LR
+    subgraph "Input"
+        CR[Cucumber Reports<br/>JSON Format]
+        BI[Build Information<br/>CI/CD Metadata]
+        FF[Feature Files<br/>Gherkin Syntax]
+    end
     
-    TS --> SITE[Site Classes]
-    TS --> PAGE[Page Classes]
-    TS --> FLOW[Flow Classes]
-    TS --> ELEM[Element Classes]
+    subgraph "Processing Pipeline"
+        VAL[Data Validation<br/>Schema Checking]
+        PARSE[Report Parsing<br/>Extract Scenarios]
+        TRANS[Data Transformation<br/>Domain Models]
+        EMBED[Embedding Generation<br/>Vector Conversion]
+        BATCH[Batch Processing<br/>Queue Management]
+    end
     
-    CONFIG --> PKG[package.json]
-    CONFIG --> TSCONFIG[tsconfig.json]
-    CONFIG --> CUCUMBER[cucumber.js]
-    CONFIG --> ESLINT[eslint.config.mjs]
+    subgraph "Storage"
+        VDB[(Vector Database<br/>Qdrant)]
+        META[(Metadata Store<br/>PostgreSQL)]
+        CACHE[(Cache Layer<br/>Redis)]
+    end
     
-    ML --> DETECT[Detectors]
-    ML --> MODELS[Models]
-    ML --> TRAIN[Trainers]
-    ML --> FACADE[Facades]
+    subgraph "Analysis"
+        AI[AI Analysis<br/>Failure Detection]
+        TREND[Trend Analysis<br/>Pattern Recognition]
+        INSIGHT[Insight Generation<br/>Recommendations]
+    end
+    
+    CR --> VAL
+    BI --> VAL
+    FF --> VAL
+    
+    VAL --> PARSE
+    PARSE --> TRANS
+    TRANS --> EMBED
+    EMBED --> BATCH
+    
+    BATCH --> VDB
+    BATCH --> META
+    BATCH --> CACHE
+    
+    VDB --> AI
+    META --> TREND
+    CACHE --> INSIGHT
+    
+    AI --> INSIGHT
+    TREND --> INSIGHT
+    
+    classDef input fill:#e3f2fd
+    classDef process fill:#f3e5f5
+    classDef storage fill:#e8f5e8
+    classDef analysis fill:#fff3e0
+    
+    class CR,BI,FF input
+    class VAL,PARSE,TRANS,EMBED,BATCH process
+    class VDB,META,CACHE storage
+    class AI,TREND,INSIGHT analysis
 ```
 
-#### Template Features
+### 2. API Architecture & Endpoints
 
-- **Go Template Engine**: With custom helper functions
-- **Helper Functions**: `toPascalCase`, `toCamelCase`, `toKebabCase`, etc.
-- **Conditional Sections**: ML components, examples, factories
-- **Template Inheritance**: Base templates with specializations
-- **Validation**: Template syntax and data validation
-
-#### Template Categories
-
-1. **TypeScript Templates**: Complete Playwright framework classes
-2. **Configuration Templates**: Node.js and build configuration files
-3. **Documentation Templates**: README files and API documentation
-4. **ML Templates**: Optional machine learning framework integration
-
-### 5. Plugin System
-
-**Location**: `internal/plugin/`
-
-Saturday supports two types of plugins for maximum flexibility:
+Friday exposes a comprehensive REST API with WebSocket support for real-time updates.
 
 ```mermaid
-graph TB
-    PM[Plugin Manager] --> DISC[Plugin Discovery]
-    PM --> LOAD[Plugin Loading]
-    PM --> REG[Command Registration]
+graph TD
+    subgraph "API Endpoints"
+        PROC_EP["/processor/*<br/>Data Ingestion"]
+        SEARCH_EP["/search<br/>Semantic Search"]
+        STATS_EP["/stats/*<br/>Analytics"]
+        ANALYSIS_EP["/analysis/*<br/>AI Insights"]
+        REPORTS_EP["/reports/*<br/>Reporting"]
+        HEALTH_EP["/health<br/>System Status"]
+    end
     
-    DISC --> GOPLUGIN[Go Plugins<br/>.so files]
-    DISC --> BINPLUGIN[Binary Plugins<br/>saturday-* executables]
+    subgraph "WebSocket Endpoints"
+        WS_DASH["/ws/dashboard<br/>Real-time Updates"]
+        WS_NOTIF["/ws/notifications<br/>Alerts"]
+    end
     
-    GOPLUGIN --> INTERFACE[PluginInterface<br/>Implementation]
-    BINPLUGIN --> WRAPPER[Binary Wrapper<br/>--info support]
+    subgraph "Core Services"
+        INGEST[Report Ingestion Service]
+        SEARCH_SVC[Semantic Search Service]
+        ANALYTICS[Analytics Service]
+        AI_SVC[AI Analysis Service]
+        REPORT_SVC[Reporting Service]
+        HEALTH_SVC[Health Check Service]
+    end
     
-    LOAD --> PATHS[Search Paths<br/>./plugins, ./bin, /usr/local/bin]
-    LOAD --> ENV[Environment<br/>SATURDAY_PLUGIN_PATH]
-```
-
-#### Plugin Types
-
-**Go Plugins** (Shared Libraries):
-- Hot-loadable `.so` files
-- Implement `PluginInterface`
-- Full access to Saturday internals
-- Type-safe integration
-
-**Binary Plugins** (Standalone Executables):
-- Independent executables named `saturday-PLUGIN_NAME`
-- Cross-platform compatibility
-- No Go dependency
-- Support `--info` flag for metadata
-
-#### Plugin Discovery
-
-Plugins are automatically discovered from:
-- `./plugins/` (local development)
-- `./bin/` (project binaries)
-- `/usr/local/bin/` (system-wide installation)
-- `$SATURDAY_PLUGIN_PATH` (environment variable)
-- Custom paths from configuration
-
-### 6. Configuration System
-
-**Location**: `internal/config/`
-
-Configuration management using Viper for hierarchical settings:
-
-```mermaid
-graph LR
-    CONFIG[Configuration System] --> VIPER[Viper Framework]
-    VIPER --> YAML[YAML Files]
-    VIPER --> ENV[Environment Variables]
-    VIPER --> FLAGS[Command Flags]
+    subgraph "Real-time Services"
+        STREAM[Event Streaming]
+        NOTIF[Notification Service]
+    end
     
-    YAML --> GLOBAL[~/.saturday.yaml]
-    YAML --> LOCAL[./.saturday.yaml]
+    PROC_EP --> INGEST
+    SEARCH_EP --> SEARCH_SVC
+    STATS_EP --> ANALYTICS
+    ANALYSIS_EP --> AI_SVC
+    REPORTS_EP --> REPORT_SVC
+    HEALTH_EP --> HEALTH_SVC
     
-    ENV --> PLUGINS[SATURDAY_PLUGIN_PATH]
-    ENV --> CONFIG_ENV[SATURDAY_CONFIG]
+    WS_DASH --> STREAM
+    WS_NOTIF --> NOTIF
+    
+    classDef endpoint fill:#e1f5fe
+    classDef websocket fill:#f3e5f5
+    classDef service fill:#e8f5e8
+    classDef realtime fill:#fff3e0
+    
+    class PROC_EP,SEARCH_EP,STATS_EP,ANALYSIS_EP,REPORTS_EP,HEALTH_EP endpoint
+    class WS_DASH,WS_NOTIF websocket
+    class INGEST,SEARCH_SVC,ANALYTICS,AI_SVC,REPORT_SVC,HEALTH_SVC service
+    class STREAM,NOTIF realtime
 ```
 
-#### Configuration Hierarchy
+### 3. Vector Database & Semantic Search Architecture
 
-1. **Command-line flags** (highest priority)
-2. **Environment variables**
-3. **Local project configuration** (`.saturday.yaml`)
-4. **Global user configuration** (`~/.saturday.yaml`)
-5. **Built-in defaults** (lowest priority)
-
-#### Configuration Sections
-
-```yaml
-generator:
-  author: ""
-  license: "MIT"
-  defaults:
-    ml: true
-    examples: true
-    factories: true
-
-plugin:
-  paths:
-    - ./plugins
-    - ./bin
-    - /usr/local/bin
-
-output:
-  verbose: false
-  colors: true
-
-ml:
-  modelsPath: "./ml-models"
-  dataPath: "./training-data"
-  logsPath: "./logs"
-  reportsPath: "./reports"
-```
-
-### 7. Utilities
-
-**Location**: `internal/utils/`
-
-Common utilities supporting all system components:
-
-- **File Operations**: Directory creation, file writing, existence checks
-- **String Utilities**: Case conversion, validation, sanitization
-- **Validation**: Input validation, identifier checking, dependency verification
-
-## Output Layer
-
-### Generated Framework Structure
-
-Saturday generates a complete, production-ready Playwright test framework:
-
-```
-project-name/
-├── features/                    # Cucumber BDD features
-│   ├── hooks/playwright/        # Playwright integration
-│   │   ├── browser-options.ts
-│   │   ├── hooks.ts
-│   │   └── setup-playwright.ts
-│   ├── playwright/
-│   │   └── console-logger.ts
-│   ├── snippets/               # TypeScript snippets
-│   │   ├── README.md
-│   │   └── ts-snippets-syntax.js
-│   ├── world/                  # Test context
-│   │   ├── custom-world.ts
-│   │   └── custom-world-options.ts
-│   └── step_definitions/       # Step implementations
-├── lib/
-│   ├── framework/              # Core framework
-│   │   ├── base/              # Base classes
-│   │   │   ├── base-element.ts
-│   │   │   ├── base-filter.ts
-│   │   │   ├── base-flow.ts
-│   │   │   ├── base-page.ts
-│   │   │   └── base-site.ts
-│   │   ├── elements/          # UI elements
-│   │   │   ├── button.ts
-│   │   │   ├── input.ts
-│   │   │   └── link.ts
-│   │   └── ml/               # ML framework (optional)
-│   │       ├── base/         # ML base classes
-│   │       ├── detectors/    # Anomaly detection
-│   │       ├── models/       # ML models
-│   │       ├── trainers/     # Model training
-│   │       ├── facades/      # ML facades
-│   │       └── types/        # ML types
-│   ├── sites/                # Site implementations
-│   └── tools/                # Tool integrations
-├── reports/                  # Test reports
-├── package.json             # Node.js dependencies
-├── tsconfig.json           # TypeScript configuration
-├── cucumber.js             # Cucumber configuration
-├── eslint.config.mjs       # ESLint configuration
-└── README.md               # Documentation
-```
-
-### Site Component Structure
-
-For each generated site:
-
-```
-lib/sites/SITE_NAME/
-├── SITE_NAME.ts             # Main site class
-├── factories/               # Test data factories
-├── filters/                 # Page filters
-├── flows/                   # User flows
-├── hooks/                   # Site-specific hooks
-├── pages/                   # Page objects
-│   └── landing.page.ts     # Default landing page
-├── models/                  # Data models
-└── interfaces/             # TypeScript interfaces
-```
-
-## ML Framework Integration (Optional)
-
-When ML features are enabled, Saturday includes a comprehensive machine learning framework for visual validation:
+The semantic search capability is powered by Qdrant vector database with AI-generated embeddings.
 
 ```mermaid
 graph TB
-    DETECTORS[Detectors] --> ANOMALY[Anomaly Detector]
-    DETECTORS --> REGRESSION[Regression Detector]
-    DETECTORS --> LAYOUT[Layout Detector]
-    DETECTORS --> ELEMENT[Element Detector]
+    subgraph "Query Processing"
+        USER_Q[User Query<br/>"login failures staging"]
+        EMBED_Q[Query Embedding<br/>Vector Generation]
+        FILTER[Filter Application<br/>Environment, Date, Status]
+    end
     
-    MODELS[Models] --> VISUAL[Visual Model]
-    MODELS --> ANOM_MODEL[Anomaly Model]
-    MODELS --> REG_MODEL[Regression Model]
+    subgraph "Qdrant Collections"
+        ARTIFACTS[test_artifacts<br/>Scenarios, Steps, Features]
+        BUILDS[build_info<br/>CI/CD Metadata]
+        CHUNKS[text_chunks<br/>Document Fragments]
+    end
     
-    TRAINERS[Trainers] --> SCREENSHOT[Screenshot Trainer]
-    TRAINERS --> ELEM_TRAIN[Element Trainer]
-    TRAINERS --> PAGE_TRAIN[Page Trainer]
-    TRAINERS --> FLOW_TRAIN[Flow Trainer]
+    subgraph "Search Processing"
+        VECTOR_SEARCH[Vector Similarity<br/>Cosine Distance]
+        RANKING[Result Ranking<br/>Relevance Scoring]
+        HIGHLIGHT[Result Highlighting<br/>Context Extraction]
+    end
     
-    FACADES[Facades] --> DET_FACADE[Detectors Facade]
-    FACADES --> MOD_FACADE[Models Facade]
-    FACADES --> TRAIN_FACADE[Trainers Facade]
+    subgraph "AI Enhancement"
+        CONTEXT[Context Analysis<br/>LLM Processing]
+        INSIGHTS[Search Insights<br/>Related Patterns]
+        SUGGEST[Query Suggestions<br/>Auto-complete]
+    end
+    
+    USER_Q --> EMBED_Q
+    EMBED_Q --> FILTER
+    
+    FILTER --> ARTIFACTS
+    FILTER --> BUILDS
+    FILTER --> CHUNKS
+    
+    ARTIFACTS --> VECTOR_SEARCH
+    BUILDS --> VECTOR_SEARCH
+    CHUNKS --> VECTOR_SEARCH
+    
+    VECTOR_SEARCH --> RANKING
+    RANKING --> HIGHLIGHT
+    
+    HIGHLIGHT --> CONTEXT
+    CONTEXT --> INSIGHTS
+    INSIGHTS --> SUGGEST
+    
+    classDef query fill:#e3f2fd
+    classDef collection fill:#f3e5f5
+    classDef search fill:#e8f5e8
+    classDef ai fill:#fff3e0
+    
+    class USER_Q,EMBED_Q,FILTER query
+    class ARTIFACTS,BUILDS,CHUNKS collection
+    class VECTOR_SEARCH,RANKING,HIGHLIGHT search
+    class CONTEXT,INSIGHTS,SUGGEST ai
 ```
 
-### ML Components
+### 4. AI & Analytics Engine
 
-1. **Detectors**: Visual anomaly and regression detection
-2. **Models**: Machine learning model implementations
-3. **Trainers**: Model training and data collection
-4. **Facades**: High-level ML operation interfaces
-5. **Utils**: Image processing and data management
+The AI engine provides intelligent analysis and insights generation using OpenAI's GPT models.
 
-## Data Flow
+```mermaid
+graph TB
+    subgraph "Input Data"
+        FAILED[Failed Test Scenarios]
+        HIST[Historical Data]
+        CONTEXT[Contextual Information]
+    end
+    
+    subgraph "AI Processing"
+        ROOT[Root Cause Analysis<br/>GPT-4 Processing]
+        PATTERN[Pattern Recognition<br/>ML Models]
+        PREDICT[Predictive Analysis<br/>Trend Forecasting]
+    end
+    
+    subgraph "Analysis Types"
+        FAILURE[Failure Analysis<br/>Why tests failed]
+        TREND_A[Trend Analysis<br/>Quality over time]
+        RISK[Risk Assessment<br/>Deployment readiness]
+        FLAKE[Flakiness Detection<br/>Unstable tests]
+    end
+    
+    subgraph "Output Generation"
+        INSIGHTS[Actionable Insights<br/>Recommendations]
+        REPORTS[Analysis Reports<br/>Executive summaries]
+        ALERTS[Smart Alerts<br/>Proactive notifications]
+    end
+    
+    FAILED --> ROOT
+    HIST --> PATTERN
+    CONTEXT --> PREDICT
+    
+    ROOT --> FAILURE
+    PATTERN --> TREND_A
+    PREDICT --> RISK
+    ROOT --> FLAKE
+    
+    FAILURE --> INSIGHTS
+    TREND_A --> REPORTS
+    RISK --> ALERTS
+    FLAKE --> INSIGHTS
+    
+    classDef input fill:#e3f2fd
+    classDef ai fill:#f3e5f5
+    classDef analysis fill:#e8f5e8
+    classDef output fill:#fff3e0
+    
+    class FAILED,HIST,CONTEXT input
+    class ROOT,PATTERN,PREDICT ai
+    class FAILURE,TREND_A,RISK,FLAKE analysis
+    class INSIGHTS,REPORTS,ALERTS output
+```
 
-### Command Execution Flow
+## Data Flow Architecture
+
+### Complete Data Journey
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant CLI as Core CLI
-    participant CMD as Command
-    participant GEN as Generator
-    participant TMPL as Template
-    participant FS as File System
+    participant CI as CI/CD Pipeline
+    participant API as Friday API
+    participant Queue as Processing Queue
+    participant Engine as Processing Engine
+    participant VDB as Vector Database
+    participant AI as AI Service
+    participant Dashboard as Dashboard
+    participant User as User
     
-    User->>CLI: saturday generate site MyApp
-    CLI->>CMD: Parse and route command
-    CMD->>GEN: Create SiteGenerator
-    GEN->>TMPL: Load site templates
-    TMPL-->>GEN: Template data
-    GEN->>FS: Create directories
-    GEN->>FS: Generate files
-    GEN-->>CMD: Success result
-    CMD-->>CLI: Operation complete
-    CLI-->>User: Success message
+    Note over CI,User: Test Execution & Report Generation
+    CI->>API: POST /processor/cucumber (JSON Report)
+    API->>Queue: Queue processing job
+    API-->>CI: 202 Accepted (report_id)
+    
+    Note over Queue,VDB: Background Processing
+    Queue->>Engine: Process report
+    Engine->>Engine: Validate & transform data
+    Engine->>AI: Generate embeddings
+    AI-->>Engine: Vector embeddings
+    Engine->>VDB: Store with embeddings
+    
+    Note over AI,Dashboard: AI Analysis & Insights
+    Engine->>AI: Analyze failures
+    AI->>AI: GPT-4 root cause analysis
+    AI-->>Engine: Analysis results
+    Engine->>Dashboard: WebSocket update
+    
+    Note over User,Dashboard: User Interaction
+    User->>API: GET /search (semantic query)
+    API->>VDB: Vector similarity search
+    VDB-->>API: Search results
+    API->>AI: Enhance with insights
+    AI-->>API: Enhanced results
+    API-->>User: JSON response
+    
+    Note over User,Dashboard: Real-time Updates
+    Dashboard->>API: WebSocket connection
+    API-->>Dashboard: Live test metrics
+    API-->>Dashboard: Failure notifications
 ```
 
-### Plugin Loading Flow
+### Service Orchestration Flow
+
+```mermaid
+graph TB
+    subgraph "Request Layer"
+        REQ[Incoming Request]
+        AUTH_CHK[Authentication Check]
+        RATE_CHK[Rate Limit Check]
+    end
+    
+    subgraph "Service Orchestrator"
+        ROUTE[Request Routing]
+        VALIDATE[Input Validation]
+        COORDINATE[Service Coordination]
+    end
+    
+    subgraph "Core Services"
+        LLM[LLM Service<br/>OpenAI Integration]
+        VECTOR[Vector DB Service<br/>Qdrant Operations]
+        ANALYTICS[Analytics Service<br/>Metrics & Stats]
+        PROCESS[Processing Service<br/>Data Transformation]
+    end
+    
+    subgraph "Response Layer"
+        AGGREGATE[Response Aggregation]
+        FORMAT[Response Formatting]
+        CACHE_STORE[Cache Storage]
+    end
+    
+    REQ --> AUTH_CHK
+    AUTH_CHK --> RATE_CHK
+    RATE_CHK --> ROUTE
+    
+    ROUTE --> VALIDATE
+    VALIDATE --> COORDINATE
+    
+    COORDINATE --> LLM
+    COORDINATE --> VECTOR
+    COORDINATE --> ANALYTICS
+    COORDINATE --> PROCESS
+    
+    LLM --> AGGREGATE
+    VECTOR --> AGGREGATE
+    ANALYTICS --> AGGREGATE
+    PROCESS --> AGGREGATE
+    
+    AGGREGATE --> FORMAT
+    FORMAT --> CACHE_STORE
+    CACHE_STORE --> REQ
+    
+    classDef request fill:#e3f2fd
+    classDef orchestrator fill:#f3e5f5
+    classDef core fill:#e8f5e8
+    classDef response fill:#fff3e0
+    
+    class REQ,AUTH_CHK,RATE_CHK request
+    class ROUTE,VALIDATE,COORDINATE orchestrator
+    class LLM,VECTOR,ANALYTICS,PROCESS core
+    class AGGREGATE,FORMAT,CACHE_STORE response
+```
+
+## Technology Stack & Infrastructure
+
+### Technology Stack Overview
+
+```mermaid
+graph TB
+    subgraph "Frontend Technologies"
+        REACT[React/Vue.js<br/>Web Dashboard]
+        MOBILE[React Native<br/>Mobile Apps]
+        EXT[TypeScript<br/>VS Code Extension]
+    end
+    
+    subgraph "Backend Technologies"
+        PYTHON[Python 3.10+<br/>Core Language]
+        FASTAPI[FastAPI<br/>Web Framework]
+        PYDANTIC[Pydantic<br/>Data Validation]
+        ASYNCIO[AsyncIO<br/>Concurrency]
+    end
+    
+    subgraph "AI & ML Stack"
+        OPENAI[OpenAI GPT-4<br/>Language Models]
+        EMBEDDINGS[Text Embeddings<br/>Semantic Vectors]
+        SCIKIT[Scikit-learn<br/>Traditional ML]
+    end
+    
+    subgraph "Data Storage"
+        QDRANT[Qdrant<br/>Vector Database]
+        POSTGRES[PostgreSQL<br/>Relational Data]
+        REDIS[Redis<br/>Cache & Queue]
+        TIMESERIES[InfluxDB<br/>Time Series]
+    end
+    
+    subgraph "Infrastructure"
+        DOCKER[Docker<br/>Containerization]
+        K8S[Kubernetes<br/>Orchestration]
+        CLOUD[AWS/Azure/GCP<br/>Cloud Platform]
+        NGINX[Nginx<br/>Load Balancer]
+    end
+    
+    subgraph "DevOps & Monitoring"
+        PROMETHEUS[Prometheus<br/>Metrics]
+        GRAFANA[Grafana<br/>Dashboards]
+        ELASTIC[ELK Stack<br/>Logging]
+        CELERY[Celery<br/>Background Jobs]
+    end
+    
+    classDef frontend fill:#e3f2fd
+    classDef backend fill:#f3e5f5
+    classDef ai fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef infra fill:#fce4ec
+    classDef devops fill:#f1f8e9
+    
+    class REACT,MOBILE,EXT frontend
+    class PYTHON,FASTAPI,PYDANTIC,ASYNCIO backend
+    class OPENAI,EMBEDDINGS,SCIKIT ai
+    class QDRANT,POSTGRES,REDIS,TIMESERIES data
+    class DOCKER,K8S,CLOUD,NGINX infra
+    class PROMETHEUS,GRAFANA,ELASTIC,CELERY devops
+```
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "Production Environment"
+        subgraph "Load Balancing"
+            ALB[Application Load Balancer]
+            CDN[CloudFront CDN]
+        end
+        
+        subgraph "Application Tier"
+            API1[Friday API Pod 1]
+            API2[Friday API Pod 2]
+            API3[Friday API Pod 3]
+            WS[WebSocket Service]
+        end
+        
+        subgraph "Processing Tier"
+            WORKER1[Celery Worker 1]
+            WORKER2[Celery Worker 2]
+            SCHEDULER[Celery Beat Scheduler]
+        end
+        
+        subgraph "Data Tier"
+            VDB_CLUSTER[Qdrant Cluster<br/>3 Nodes]
+            PG_PRIMARY[PostgreSQL Primary]
+            PG_REPLICA[PostgreSQL Replica]
+            REDIS_CLUSTER[Redis Cluster<br/>6 Nodes]
+        end
+        
+        subgraph "Monitoring Tier"
+            PROM[Prometheus]
+            GRAF[Grafana]
+            ALERT[AlertManager]
+        end
+    end
+    
+    subgraph "External Services"
+        OPENAI_API[OpenAI API]
+        S3[AWS S3]
+        SLACK_API[Slack API]
+    end
+    
+    CDN --> ALB
+    ALB --> API1
+    ALB --> API2
+    ALB --> API3
+    ALB --> WS
+    
+    API1 --> VDB_CLUSTER
+    API2 --> PG_PRIMARY
+    API3 --> REDIS_CLUSTER
+    
+    API1 --> WORKER1
+    API2 --> WORKER2
+    SCHEDULER --> WORKER1
+    SCHEDULER --> WORKER2
+    
+    WORKER1 --> OPENAI_API
+    WORKER2 --> S3
+    API3 --> SLACK_API
+    
+    PROM --> API1
+    PROM --> API2
+    PROM --> API3
+    GRAF --> PROM
+    ALERT --> GRAF
+    
+    classDef lb fill:#e3f2fd
+    classDef app fill:#f3e5f5
+    classDef process fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef monitor fill:#fce4ec
+    classDef external fill:#f1f8e9
+    
+    class ALB,CDN lb
+    class API1,API2,API3,WS app
+    class WORKER1,WORKER2,SCHEDULER process
+    class VDB_CLUSTER,PG_PRIMARY,PG_REPLICA,REDIS_CLUSTER data
+    class PROM,GRAF,ALERT monitor
+    class OPENAI_API,S3,SLACK_API external
+```
+
+## Security Architecture
+
+### Security Layers & Controls
+
+```mermaid
+graph TB
+    subgraph "Network Security"
+        WAF[Web Application Firewall]
+        VPC[Virtual Private Cloud]
+        SG[Security Groups]
+        NACL[Network ACLs]
+    end
+    
+    subgraph "Application Security"
+        API_AUTH[API Authentication<br/>Bearer Tokens]
+        RBAC[Role-Based Access Control]
+        RATE_LIMIT[Rate Limiting]
+        INPUT_VAL[Input Validation]
+    end
+    
+    subgraph "Data Security"
+        ENCRYPT_TRANSIT[TLS Encryption<br/>Data in Transit]
+        ENCRYPT_REST[AES Encryption<br/>Data at Rest]
+        PII_SCRUB[PII Data Scrubbing]
+        BACKUP_ENC[Encrypted Backups]
+    end
+    
+    subgraph "Infrastructure Security"
+        IAM[Identity & Access Management]
+        SECRETS[Secret Management<br/>AWS Secrets Manager]
+        SCAN[Container Scanning]
+        PATCH[Security Patching]
+    end
+    
+    subgraph "Monitoring & Compliance"
+        AUDIT_LOG[Audit Logging]
+        INTRUSION[Intrusion Detection]
+        COMPLIANCE[GDPR/SOC2 Compliance]
+        INCIDENT[Incident Response]
+    end
+    
+    WAF --> API_AUTH
+    VPC --> RBAC
+    SG --> RATE_LIMIT
+    NACL --> INPUT_VAL
+    
+    API_AUTH --> ENCRYPT_TRANSIT
+    RBAC --> ENCRYPT_REST
+    RATE_LIMIT --> PII_SCRUB
+    INPUT_VAL --> BACKUP_ENC
+    
+    ENCRYPT_TRANSIT --> IAM
+    ENCRYPT_REST --> SECRETS
+    PII_SCRUB --> SCAN
+    BACKUP_ENC --> PATCH
+    
+    IAM --> AUDIT_LOG
+    SECRETS --> INTRUSION
+    SCAN --> COMPLIANCE
+    PATCH --> INCIDENT
+    
+    classDef network fill:#e3f2fd
+    classDef application fill:#f3e5f5
+    classDef data fill:#e8f5e8
+    classDef infrastructure fill:#fff3e0
+    classDef monitoring fill:#fce4ec
+    
+    class WAF,VPC,SG,NACL network
+    class API_AUTH,RBAC,RATE_LIMIT,INPUT_VAL application
+    class ENCRYPT_TRANSIT,ENCRYPT_REST,PII_SCRUB,BACKUP_ENC data
+    class IAM,SECRETS,SCAN,PATCH infrastructure
+    class AUDIT_LOG,INTRUSION,COMPLIANCE,INCIDENT monitoring
+```
+
+## Performance & Scalability
+
+### Performance Characteristics
+
+| Component | Expected Performance | Scalability Pattern |
+|-----------|---------------------|-------------------|
+| **API Endpoints** | < 100ms response time | Horizontal scaling with load balancing |
+| **Semantic Search** | < 500ms query time | Vector database clustering |
+| **AI Analysis** | 30-60 seconds | Async processing with queues |
+| **Report Processing** | 2-3 minutes | Background workers with auto-scaling |
+| **Real-time Updates** | < 50ms WebSocket latency | Connection pooling and clustering |
+| **Dashboard Load** | < 2 seconds full page | CDN caching and lazy loading |
+
+### Scaling Strategy
+
+```mermaid
+graph TB
+    subgraph "Auto-Scaling Triggers"
+        CPU[CPU Utilization > 70%]
+        MEMORY[Memory Usage > 80%]
+        QUEUE[Queue Length > 100]
+        RESPONSE[Response Time > 1s]
+    end
+    
+    subgraph "Scaling Actions"
+        SCALE_API[Scale API Pods<br/>2-10 instances]
+        SCALE_WORKERS[Scale Workers<br/>1-20 instances]
+        SCALE_DB[Scale Database<br/>Read Replicas]
+        SCALE_CACHE[Scale Cache<br/>Redis Cluster]
+    end
+    
+    subgraph "Load Distribution"
+        ROUND_ROBIN[Round Robin<br/>API Load Balancing]
+        QUEUE_DIST[Queue Distribution<br/>Worker Load Balancing]
+        READ_DIST[Read Distribution<br/>Database Load Balancing]
+        CACHE_DIST[Cache Distribution<br/>Consistent Hashing]
+    end
+    
+    CPU --> SCALE_API
+    MEMORY --> SCALE_WORKERS
+    QUEUE --> SCALE_WORKERS
+    RESPONSE --> SCALE_DB
+    
+    SCALE_API --> ROUND_ROBIN
+    SCALE_WORKERS --> QUEUE_DIST
+    SCALE_DB --> READ_DIST
+    SCALE_CACHE --> CACHE_DIST
+    
+    classDef trigger fill:#ffebee
+    classDef action fill:#e8f5e8
+    classDef distribution fill:#e3f2fd
+    
+    class CPU,MEMORY,QUEUE,RESPONSE trigger
+    class SCALE_API,SCALE_WORKERS,SCALE_DB,SCALE_CACHE action
+    class ROUND_ROBIN,QUEUE_DIST,READ_DIST,CACHE_DIST distribution
+```
+
+## Integration Patterns
+
+### CI/CD Integration Flow
 
 ```mermaid
 sequenceDiagram
-    participant CLI as Core CLI
-    participant PM as Plugin Manager
-    participant FS as File System
-    participant PLUGIN as Plugin
+    participant DEV as Developer
+    participant GIT as Git Repository
+    participant CI as CI/CD Pipeline
+    participant TESTS as Test Execution
+    participant FRIDAY as Friday Platform
+    participant SLACK as Slack/Teams
     
-    CLI->>PM: Initialize plugin system
-    PM->>FS: Scan plugin directories
-    FS-->>PM: Available plugins
-    PM->>PLUGIN: Load Go plugins (.so)
-    PM->>PLUGIN: Load binary plugins
-    PLUGIN-->>PM: Plugin commands
-    PM-->>CLI: Register commands
-    CLI->>CLI: Add to root command
+    DEV->>GIT: Push code changes
+    GIT->>CI: Trigger pipeline
+    CI->>CI: Build application
+    CI->>TESTS: Execute test suite
+    TESTS->>TESTS: Generate Cucumber reports
+    TESTS->>FRIDAY: POST /processor/cucumber
+    FRIDAY->>FRIDAY: Process & analyze reports
+    FRIDAY->>SLACK: Send failure notifications
+    FRIDAY->>CI: Return analysis results
+    CI->>DEV: Pipeline completion status
+    
+    Note over DEV,SLACK: Continuous feedback loop for quality insights
 ```
 
-## Extension Points
+### Multi-Framework Support
 
-### 1. Custom Generators
-
-New generators can be added by:
-- Implementing the `Generator` interface
-- Adding command registration
-- Creating associated templates
-
-### 2. Template Customization
-
-Templates can be customized through:
-- User-defined template directories
-- Template override mechanisms
-- Custom helper functions
-
-### 3. Plugin Development
-
-Two plugin development paths:
-
-**Go Plugins**:
-```go
-type PluginInterface interface {
-    Name() string
-    Description() string
-    Version() string
-    Command() *cobra.Command
-}
+```mermaid
+graph TB
+    subgraph "Test Frameworks"
+        CUCUMBER[Cucumber<br/>Gherkin BDD]
+        JUNIT[JUnit<br/>Java Unit Tests]
+        TESTNG[TestNG<br/>Java Testing]
+        PYTEST[Pytest<br/>Python Testing]
+        CYPRESS[Cypress<br/>E2E Testing]
+    end
+    
+    subgraph "Report Formats"
+        JSON[JSON Reports]
+        XML[XML Reports]
+        ALLURE[Allure Reports]
+        CUSTOM[Custom Formats]
+    end
+    
+    subgraph "Adapters"
+        CUCUMBER_ADAPTER[Cucumber Adapter<br/>Native Support]
+        JUNIT_ADAPTER[JUnit Adapter<br/>XML to JSON]
+        TESTNG_ADAPTER[TestNG Adapter<br/>XML to JSON]
+        PYTEST_ADAPTER[Pytest Adapter<br/>JSON Plugin]
+        CYPRESS_ADAPTER[Cypress Adapter<br/>Report Plugin]
+    end
+    
+    subgraph "Friday Processing"
+        UNIFIED[Unified Data Model]
+        PROCESSING[Standard Processing Pipeline]
+    end
+    
+    CUCUMBER --> JSON
+    JUNIT --> XML
+    TESTNG --> XML
+    PYTEST --> JSON
+    CYPRESS --> ALLURE
+    
+    JSON --> CUCUMBER_ADAPTER
+    XML --> JUNIT_ADAPTER
+    XML --> TESTNG_ADAPTER
+    JSON --> PYTEST_ADAPTER
+    ALLURE --> CYPRESS_ADAPTER
+    
+    CUCUMBER_ADAPTER --> UNIFIED
+    JUNIT_ADAPTER --> UNIFIED
+    TESTNG_ADAPTER --> UNIFIED
+    PYTEST_ADAPTER --> UNIFIED
+    CYPRESS_ADAPTER --> UNIFIED
+    
+    UNIFIED --> PROCESSING
+    
+    classDef framework fill:#e3f2fd
+    classDef format fill:#f3e5f5
+    classDef adapter fill:#e8f5e8
+    classDef processing fill:#fff3e0
+    
+    class CUCUMBER,JUNIT,TESTNG,PYTEST,CYPRESS framework
+    class JSON,XML,ALLURE,CUSTOM format
+    class CUCUMBER_ADAPTER,JUNIT_ADAPTER,TESTNG_ADAPTER,PYTEST_ADAPTER,CYPRESS_ADAPTER adapter
+    class UNIFIED,PROCESSING processing
 ```
 
-**Binary Plugins**:
-- Executable named `saturday-PLUGIN_NAME`
-- Support `--info` flag
-- Standard I/O integration
+## Future Roadmap & Extensions
 
-### 4. Configuration Extension
+### Platform Evolution
 
-Configuration can be extended with:
-- Custom configuration sections
-- Environment variable mappings
-- Site-specific configurations
+```mermaid
+timeline
+    title Friday Platform Roadmap
+    
+    section Q3 2025
+        Core Platform    : FastAPI Backend
+                        : Qdrant Vector DB
+                        : OpenAI Integration
+                        : Cucumber Support
+    
+    section Q4 2025
+        Multi-Framework  : JUnit Integration
+                        : TestNG Support
+                        : Pytest Adapter
+                        : Custom Formatters
+        
+        Advanced AI      : Predictive Analysis
+                        : Flakiness Detection
+                        : Auto-categorization
+                        : Smart Recommendations
+    
+    section Q1 2026
+        Enterprise       : Multi-tenant Architecture
+                        : Advanced RBAC
+                        : SSO Integration
+                        : Compliance Features
+        
+        Performance      : Edge Computing
+                        : Global Distribution
+                        : Real-time Streaming
+                        : Advanced Caching
+    
+    section Q2 2026
+        Platform         : Marketplace Ecosystem
+                        : Plugin Architecture
+                        : Custom Integrations
+                        : Workflow Automation
+        
+        ML/AI           : Custom Model Training
+                        : Anomaly Detection
+                        : Quality Prediction
+                        : Auto-healing Tests
+```
 
-## Performance Characteristics
+## Conclusion
 
-### Generation Performance
+The Friday Test Analysis Platform represents a modern, scalable architecture designed to transform how development teams analyze and act on test results. By combining vector databases for semantic search, AI/LLM services for intelligent analysis, and a robust microservices architecture, Friday provides unprecedented insights into testing processes.
 
-- **Framework generation**: < 5 seconds
-- **Site generation**: < 2 seconds
-- **Page/Flow generation**: < 1 second
-- **Template rendering**: < 500ms
+**Key Architectural Strengths:**
 
-### Memory Usage
+- **Scalable Design**: Microservices architecture with auto-scaling capabilities
+- **Intelligent Analysis**: AI-powered insights and semantic search
+- **Real-time Capabilities**: WebSocket integration for live updates
+- **Extensible Framework**: Plugin architecture for custom integrations
+- **Enterprise Ready**: Security, monitoring, and compliance features
+- **Performance Optimized**: Caching, async processing, and load balancing
 
-- **Base CLI**: ~10MB
-- **With plugins loaded**: ~25MB
-- **During generation**: ~50MB peak
+**Technology Decisions:**
 
-### Plugin Loading
+- **FastAPI**: High-performance async web framework
+- **Qdrant**: Vector database for semantic search capabilities
+- **OpenAI**: Industry-leading LLM for intelligent analysis
+- **Kubernetes**: Container orchestration for scalability
+- **Redis**: High-performance caching and queue management
 
-- **Go plugin loading**: < 100ms per plugin
-- **Binary plugin discovery**: < 50ms per plugin
-- **Command registration**: < 10ms per plugin
-
-## Security Considerations
-
-### Plugin Security
-
-1. **Plugin Validation**: Signature verification (planned)
-2. **Sandboxing**: Limited file system access
-3. **Permission Model**: Role-based plugin permissions
-
-### Code Generation Security
-
-1. **Input Sanitization**: All user inputs validated
-2. **Path Traversal Prevention**: Restricted file operations
-3. **Template Injection Protection**: Safe template execution
-4. **File Permissions**: Appropriate permissions on generated files
-
-## Build and Distribution
-
-### Cross-Platform Support
-
-Saturday builds for multiple platforms:
-- Linux (amd64, arm64)
-- macOS (amd64, arm64)
-- Windows (amd64)
-
-### Distribution Channels
-
-1. **GitHub Releases**: Pre-built binaries
-2. **Go Install**: `go install github.com/yourorg/saturday/cmd/saturday@latest`
-3. **Docker Images**: Containerized execution
-4. **Package Managers**: Future homebrew, apt, etc.
-
-### Build System
-
-Comprehensive build automation with:
-- **Makefile**: All build targets
-- **GitHub Actions**: CI/CD pipeline
-- **Docker**: Multi-stage container builds
-- **Release Automation**: Automated binary packaging
-
-This architecture provides a robust, scalable foundation for a sophisticated CLI tool that can generate complex test automation frameworks while remaining extensible and maintainable.
+This architectural foundation positions Friday to evolve with changing technology landscapes while maintaining reliability, performance, and extensibility for development teams of all sizes.
